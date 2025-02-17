@@ -1,0 +1,313 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --primary-light: #eef2ff;
+            --secondary-color: #3f37c9;
+            --accent-color: #f72585;
+            --text-color: #2b2d42;
+            --text-light: #8d99ae;
+            --background: #f8f9fa;
+            --card-bg: #ffffff;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            width: 100%;
+        }
+
+        .title-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            letter-spacing: 0.5px;
+            position: relative;
+            z-index: 1;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--primary-light), #ffffff);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 0 auto;
+        }
+
+        thead {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        th {
+            padding: 16px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 16px;
+            letter-spacing: 0.5px;
+        }
+
+        th:first-child {
+            border-top-left-radius: 10px;
+        }
+
+        th:last-child {
+            border-top-right-radius: 10px;
+            text-align: center;
+        }
+
+        td {
+            padding: 16px 12px;
+            border-bottom: 1px solid #edf2f7;
+            font-size: 15px;
+        }
+
+        tbody tr {
+            transition: all 0.3s ease;
+        }
+
+        tbody tr:hover {
+            background-color: var(--primary-light);
+            transform: translateY(-2px);
+        }
+
+        /* Rank styling */
+        .rank {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+
+        .rank-1, .rank-2, .rank-3 {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .rank-1 {
+            background: linear-gradient(135deg, #ffd700, #f9a825);
+        }
+
+        .rank-2 {
+            background: linear-gradient(135deg, #c0c0c0, #9e9e9e);
+        }
+
+        .rank-3 {
+            background: linear-gradient(135deg, #cd7f32, #bf360c);
+        }
+
+        /* Points styling */
+        .points {
+            font-weight: 600;
+            color: var(--primary-color);
+            text-align: center;
+        }
+
+        /* Name styling */
+        .name {
+            font-weight: 500;
+        }
+
+        .refresh-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 1rem;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .refresh-info i {
+            margin-right: 0.5rem;
+            animation: rotate 2s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            border-radius: 12px;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--primary-light);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .is-loading .loading-overlay {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0.5rem;
+            }
+            
+            .title {
+                font-size: 1.8rem;
+            }
+            
+            th, td {
+                padding: 12px 8px;
+                font-size: 14px;
+            }
+        }
+    </style>
+    <script>
+        async function fetchLeaderboard() {
+            const tableContainer = document.querySelector('.table-container');
+            tableContainer.classList.add('is-loading');
+            
+            const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQhZ_hpgrWeGH02g68v-Vi38esD_x_xu4WKMg7J-Id9fNS9rH0AlHuDxvil_ry1DL0_WZFyZkfniADd/pub?output=tsv";
+            
+            try {
+                const response = await fetch(sheetURL);
+                const text = await response.text();
+                
+                let rows = text.trim().split("\n").map(row => row.split("\t")); // Convert TSV to array
+                let data = rows.slice(1).map(row => ({
+                    name: row[0],
+                    points: parseInt(row[1]) || 0
+                }));
+
+                data.sort((a, b) => b.points - a.points); // Sort by points
+
+                document.getElementById("leaderboard").innerHTML = data.map((entry, index) => {
+                    const rank = index + 1;
+                    const rankClass = rank <= 3 ? `rank-${rank}` : '';
+                    
+                    return `
+                        <tr>
+                            <td>
+                                <div class="rank">
+                                    ${rank <= 3 ? 
+                                      `<div class="${rankClass}">${rank}</div>` :
+                                      `${rank}`
+                                    }
+                                </div>
+                            </td>
+                            <td class="name">${entry.name}</td>
+                            <td class="points">${entry.points}</td>
+                        </tr>
+                    `;
+                }).join("");
+                
+                // Update timestamp
+                const now = new Date();
+                document.getElementById("timestamp").textContent = 
+                    `${now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+            } catch (error) {
+                console.error("Error fetching leaderboard:", error);
+            } finally {
+                tableContainer.classList.remove('is-loading');
+            }
+        }
+
+        setInterval(fetchLeaderboard, 3000000); 
+        window.onload = fetchLeaderboard;
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="title-container">
+            <h1 class="title">Referral Leaderboard BitByBit</h1>
+        </div>
+        
+        <div class="card table-container">
+            <div class="loading-overlay">
+                <div class="loading-spinner"></div>
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th width="15%">Rank</th>
+                        <th width="55%">Referral Code</th>
+                        <th width="30%">Registrations</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard"></tbody>
+            </table>
+            
+            <div class="refresh-info">
+                <i class="fas fa-sync-alt"></i>
+                <span>Last updated at <span id="timestamp">--:--</span> (refreshes automatically in 1hr)</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
